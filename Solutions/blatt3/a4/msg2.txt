@@ -1,0 +1,6 @@
+TOUR OF ACCOUNTING
+
+> Over here we have our random number generator.
+# NINE NINE NINE NINE NINE NINE ...
+$ Are you sure that's random?
+> That's the problem with randomness: You can never be sure.

@@ -1,0 +1,32 @@
+#!/bin/bash
+
+script=$(basename $0)
+
+function sandbox_create() { #HELP Create a blacklist of the current filesystem (requires root privileges!)\nSANDBOX create
+    echo "[*] Searching for files owned by the user 'root'..."
+    find / -type f -user root -exec basename {} 2>/dev/null \; >> blacklist.txt
+    echo "[*] Searching for files owned by the group 'root'..."
+    find / -type f -group root -exec basename {} 2>/dev/null \; >> blacklist.txt
+    echo "[*] Creating file 'blacklist.lst'..."
+    cat blacklist.txt | sort | uniq > blacklist.lst
+    rm blacklist.txt
+}
+
+function sandbox_run() { #HELP Run a particular program in a sandbox\nSANDBOX run <program> [arg1 arg2 ... argn]
+    if [[ $# != 2 ]]; then
+        return
+    fi
+
+    export LD_PRELOAD=$(pwd)/sandbox.so
+    ./$1 ${@:2}
+    unset LD_PRELOAD
+}
+
+function sandbox_help() { #HELP Display this message:\nSANDBOX help
+	sed -n "s/^.*#HELP\\s//p;" < "$1" | sed "s/\\\\n/\n\t/g;s/$/\n/;s!SANDBOX!${1/!/\\!}!g"
+}
+
+case $1 in
+	run|create) sandbox_"$1" "${@:2}" ;;
+	*) sandbox_help "$script" ;;
+esac

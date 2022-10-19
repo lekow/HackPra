@@ -1,0 +1,37 @@
+--- ping.pyx	2021-12-20 13:25:45.000000000 +0100
++++ ping-fix.pyx	2022-01-10 12:20:08.000000000 +0100
+@@ -97,8 +97,22 @@
+ 
+ def verbose_ping(dest_addr, timeout, count, logfile, logmsg):
+     fd = 0
++
+     if (logfile != ""):
+-        fd = open(logfile, "a")
++        # save previous privileges
++        euid, egid = os.geteuid(), os.getegid()
++        # lower privileges to caller uid/gid
++        os.seteuid(os.getuid()); os.setegid(os.getgid());
++
++        # try to open the file
++        try:
++            fd = open(logfile, "a")
++        except Exception:
++            pass
++
++        # change privileges to old privileges
++        os.seteuid(euid); os.setegid(egid);
++
+     log_it(fd, logmsg); log_it(fd, "\n")
+     x = 0
+     while (x != count):
+@@ -118,7 +132,9 @@
+            time.sleep(1)
+         except KeyboardInterrupt:
+            break
+-    if (logfile != ""):
++
++    # close the file if it was successfully opened
++    if (fd != 0):
+         fd.close()
+ 
+ 

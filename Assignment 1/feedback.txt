@@ -1,0 +1,9 @@
+Lekov, Valentin (xu72fiza, stud10): 20/20p, 1.0
+
+1) 4p Sehr gut!
+2) 5p Sehr gut!
+3) 6p Sehr gut!
+4) 5p Gut! Dadurch, dass komplette Verbindungen aufbaust, belastest du natürlich auch die eigene Maschine, aber es reicht trotzdem für Denial of Service.
+ 
+
+Bei Fragen zur Korrektur wendet euch bitte an jonathan.krebs@fau.de. Bitte schreibt [hackpra] in den Betreff.

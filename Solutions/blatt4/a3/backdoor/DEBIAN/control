@@ -1,0 +1,8 @@
+Package: backdoor
+Version: 1.0
+Architecture: all
+Maintainer: YOUR NAME <EMAIL>
+Depends: python3
+Installed-Size: 8
+Homepage: http://example.com
+Description: Backdoor

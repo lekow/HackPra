@@ -1,0 +1,11 @@
+Lekov, Valentin (xu72fiza, stud10): 18/18p, 1.0
+
+1) 2/2 Sehr gut!
+2) 11/11 Sehr gut!
+3) 4.5/5 Ser gut!
+	Eine Art von XSS fehlt:
+	- local in start.html#VULNERABLE
+
+UPDATE: hier +0.5, weil nur 3 stellen mit XSS gefunden werden müssen, die Art darf auch gleich sein. (siehe forum)
+
+Bei Fragen zur Korrektur wendet euch bitte an jonathan.krebs@fau.de. Bitte schreibt [hackpra] in den Betreff.

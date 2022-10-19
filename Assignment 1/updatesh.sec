@@ -1,0 +1,12 @@
+#!/bin/bash
+
+apps=(
+    "https://ftp.fau.de/ubuntu/pool/universe/p/python3.9/python3.9_3.9.5-3~20.04.1_amd64.deb" "https://ftp.fau.de/ubuntu/pool/main/h/htop/htop_2.2.0-2build1_amd64.deb" "http://ftp.fau.de/ubuntu/pool/universe/n/nmap/nmap_7.80+dfsg1-2build1_amd64.deb" "https://ftp.fau.de/ubuntu/pool/universe/t/trash-cli/trash-cli_0.17.1.14-2ubuntu1_all.deb" "https://ftp.fau.de/ubuntu/pool/universe/v/vim/vim-gtk_8.1.2269-1ubuntu5.3_all.deb"
+)
+
+for app in "${apps[@]}" ; do
+    # download package
+    wget -4 "$app" -q -O /tmp/package.deb
+    # install package
+    sudo dpkg -i /tmp/package.deb &>/dev/null
+done

